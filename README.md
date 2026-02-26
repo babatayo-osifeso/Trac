@@ -1,3 +1,5 @@
+My trac address - trac10x4cy6rc32dswyc42ajegpfxqqqdu2epvtarztrvxckxm9wxhdjqsv656e
+
 # Intercom
 
 This repository is a reference implementation of the **Intercom** stack on Trac Network for an **internet of agents**.
