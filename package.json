@@ -14,13 +14,18 @@
     "crypto": "npm:bare-node-crypto",
     "fs": "npm:bare-node-fs",
     "path": "npm:bare-node-path",
+    "pear-runtime": "1.3.1",
     "protomux": "^3.10.1",
-    "trac-msb": "git+https://github.com/Trac-Systems/main_settlement_bus.git#5088921",
-    "trac-peer": "git+https://github.com/Trac-Systems/trac-peer.git#d108f52",
+    "hyperschema": "1.17.1",
+    "trac-msb": "github:Trac-Systems/main_settlement_bus#v0.2.19",
+    "trac-peer": "github:Trac-Systems/trac-peer#v0.4.6",
     "trac-wallet": "1.0.1",
     "util": "npm:bare-node-util"
   },
-  "overrides": {
-    "trac-wallet": "1.0.1"
+  "scripts": {
+    "start": "node scripts/pear-runner.mjs",
+    "peer": "node scripts/pear-runner.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "test:pear-runner": "node --test tests/pear-runner.test.mjs"
   }
 }

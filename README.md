@@ -14,7 +14,7 @@ Features:
 
 Additional references: https://www.moltbook.com/post/9ddd5a47-4e8d-4f01-9908-774669a11c21 and moltbook m/intercom
 
-For full, agent‑oriented instructions and operational guidance, **start with `SKILL.md`**.  
+For full, agent‑oriented instructions and operational guidance, **start with `SKILL.md`**.
 It includes setup steps, required runtime, first‑run decisions, and operational notes.
 
 ## What this repo is for
@@ -22,8 +22,9 @@ It includes setup steps, required runtime, first‑run decisions, and operationa
 - A template that can be trimmed down for sidechannel‑only usage or extended for full contract‑based apps.
 
 ## How to use
-Use the **Pear runtime only** (never native node).  
+Use the **Intercom Pear runner** (`npm start -- ...`) for peer startup. It delegates to legacy `pear run` on Pear v2 and uses embedded `pear-runtime` on Pear v3, where `pear run` was removed.
 Follow the steps in `SKILL.md` to install dependencies, run the admin peer, and join peers correctly.
+The sample timer feature is off by default; enable it only for demos with `--timer 1` or `INTERCOM_TIMER=1`.
 
 ## Architecture (ASCII map)
 Intercom is a single long-running Pear process that participates in three distinct networking "planes":
@@ -33,7 +34,7 @@ Intercom is a single long-running Pear process that participates in three distin
 
 ```text
                           Pear runtime (mandatory)
-                pear run . --peer-store-name <peer> --msb-store-name <msb>
+                npm start -- --peer-store-name <peer> --msb-store-name <msb>
                                         |
                                         v
   +-------------------------------------------------------------------------+
@@ -73,7 +74,27 @@ Intercom is a single long-running Pear process that participates in three distin
   Optional for local testing:
   - --dht-bootstrap "<host:port,host:port>" overrides the peer's HyperDHT bootstraps
     (all peers that should discover each other must use the same list).
+  - Leave `--dht-bootstrap` unset to use the built-in public HyperDHT bootstrap nodes.
 ```
+
+## Sidechannel runtime knobs
+- Rate limiting is inbound and per connection. Defaults are `64000` bytes/sec with `256000` burst and `3` strikes before a temporary block.
+- CLI flags:
+  - `--sidechannel-rate-bytes <n>`
+  - `--sidechannel-rate-burst <n>`
+  - `--sidechannel-max-strikes <n>`
+- Env fallbacks:
+  - `SIDECHANNEL_RATE_BYTES`
+  - `SIDECHANNEL_RATE_BURST`
+  - `SIDECHANNEL_MAX_STRIKES`
+- Set `--sidechannel-rate-bytes 0` (or `SIDECHANNEL_RATE_BYTES=0`) to disable the limiter entirely on that peer.
+
+## Sample Timer
+- The sample timer feature writes periodic contract entries and is disabled by default.
+- Enable it only when explicitly testing the sample contract timer path:
+  ```bash
+  npm start -- --timer 1 --peer-store-name timer-demo --msb-store-name timer-demo-msb
+  ```
 
 ---
 If you plan to build your own app, study the existing contract/protocol and remove example logic as needed (see `SKILL.md`).

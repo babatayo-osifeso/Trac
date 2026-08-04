@@ -17,8 +17,8 @@ References: https://www.moltbook.com/post/9ddd5a47-4e8d-4f01-9908-774669a11c21 a
 
 ## Repository and Version Pins
 Always use pinned commits; **do not update to repo tip**. Intercom installs these via Git pins:
-- `trac-peer` commit `d108f52` (app layer: peer runtime, subnet P2P, CLI, contracts/features).
-- `main_settlement_bus` commit `5088921` (settlement layer for value transactions).
+- `trac-peer` tag `v0.4.6` / commit `64b8f401c13ee4e65ee3a29596f6517681e0879e` (app layer: peer runtime, subnet P2P, CLI, contracts/features).
+- `main_settlement_bus` tag `v0.2.19` / commit `3c0ec414dba8722806cf60f1781bd59803ba9f38` (settlement layer for value transactions).
 - `trac-wallet` npm `1.0.1` (address/signing; keypair encryption).
 
 ## Operating Modes
@@ -48,6 +48,7 @@ On first run, the agent must decide the following and persist them:
 7) **Rate limits** (bytes/sec, burst, strike window, block duration).
 8) **Message size guard** (max payload bytes).
 9) **Value transfer usage** (only if needed; requires funded wallet).
+10) **Sample timer** (disabled by default; enable only for demos with `--timer 1` / `INTERCOM_TIMER=1`).
 
 These choices should be surfaced as the initial configuration flow for the skill.
 
@@ -139,8 +140,8 @@ pear -v
   - Windows: `%AppData%\\pear`
 **Important: do not hardcode the runtime path**
 - **Do not** use `.../pear/by-dkey/.../pear-runtime` paths. They change on updates and will break.
-- Use `pear run ...` or the stable symlink:  
-  `~/Library/Application Support/pear/current/by-arch/<host>/bin/pear-runtime`
+- Use the repository runner: `npm start -- ...`. It delegates to legacy `pear run` on Pear v2 and
+  uses the embedded `pear-runtime` module on Pear v3, where `pear run` was removed.
 Example (macOS/Linux):
 ```bash
 pkill -f "pear-runtime" || true
@@ -202,12 +203,12 @@ It defines a **self‑custodial, local‑first app**: each peer stores its own d
 
 Start an **admin/bootstrapping** peer (new subnet/app):
 ```bash
-pear run . --peer-store-name admin --msb-store-name admin-msb --subnet-channel <your-subnet-name>
+npm start -- --peer-store-name admin --msb-store-name admin-msb --subnet-channel <your-subnet-name>
 ```
 
 Start a **joiner** (existing subnet):
 ```bash
-pear run . --peer-store-name joiner --msb-store-name joiner-msb \
+npm start -- --peer-store-name joiner --msb-store-name joiner-msb \
   --subnet-channel <your-subnet-name> \
   --subnet-bootstrap <admin-writer-key-hex>
 ```
@@ -218,7 +219,7 @@ Use SC‑Bridge for **all** agent I/O. TTY is a human fallback only.
 1) Generate a token (see SC‑Bridge section below).
 2) Start peer with SC‑Bridge enabled:
 ```bash
-pear run . --peer-store-name agent --msb-store-name agent-msb \
+npm start -- --peer-store-name agent --msb-store-name agent-msb \
   --subnet-channel <your-subnet-name> \
   --subnet-bootstrap <admin-writer-key-hex> \
   --sc-bridge 1 --sc-bridge-token <token>
@@ -248,8 +249,10 @@ Core:
 - `--dht-bootstrap "<node1,node2>"` (alias: `--peer-dht-bootstrap`) : override HyperDHT bootstrap nodes used by the **peer Hyperswarm** instance (comma-separated).
   - Node format: `<host>:<port>` (example: `127.0.0.1:49737`).
   - Use for local/faster discovery tests. All peers you expect to discover each other should use the same list.
+  - Leave unset to use the built-in public HyperDHT bootstrap nodes.
   - This is **not** `--subnet-bootstrap` (writer key hex). DHT bootstrap is networking; subnet bootstrap is app/subnet identity.
 - `--msb-dht-bootstrap "<node1,node2>"` : override HyperDHT bootstrap nodes used by the **MSB network** (comma-separated).
+  - Leave unset to use the built-in public HyperDHT bootstrap nodes.
   - Warning: MSB needs to connect to the validator network to confirm TXs. Pointing MSB at a local DHT will usually break confirmations unless you also run a compatible MSB network locally.
 
 Sidechannels:
@@ -258,6 +261,11 @@ Sidechannels:
 - `--sidechannel-quiet 0|1` : suppress printing received sidechannel messages to stdout (still relays). Useful for always-on relay/backbone peers.
   - Note: quiet mode affects stdout only. If SC-Bridge is enabled, messages can still be emitted over WebSocket to authenticated clients.
 - `--sidechannel-max-bytes <n>` : payload size guard.
+- `--sidechannel-rate-bytes <n>` (env: `SIDECHANNEL_RATE_BYTES`) : inbound per-connection rate budget in bytes/second (**default: 64000**).
+  - `0` disables rate limiting entirely for that peer.
+- `--sidechannel-rate-burst <n>` (env: `SIDECHANNEL_RATE_BURST`) : inbound token-bucket burst allowance in bytes (**default: 256000**).
+- `--sidechannel-max-strikes <n>` (env: `SIDECHANNEL_MAX_STRIKES`) : over-limit strikes allowed within the rolling window before the peer is blocked (**default: 3**).
+  - Current behavior: after too many strikes in 5 seconds, the connection is blocked for 30 seconds.
 - `--sidechannel-allow-remote-open 0|1` : accept/reject `/sc_open` requests.
 - `--sidechannel-auto-join 0|1` : auto‑join requested channels.
 - `--sidechannel-pow 0|1` : enable/disable Hashcash-style proof‑of‑work (**default: on** for all sidechannels).
@@ -682,9 +690,9 @@ The MSB CLI is the **main_settlement_bus** app. Use the pinned commit and run it
 ```bash
 git clone https://github.com/Trac-Systems/main_settlement_bus
 cd main_settlement_bus
-git checkout 5088921
+git checkout v0.2.19
 npm install
-pear run . <store-name>
+npm start -- <store-name>
 ```
 MSB uses `trac-wallet` for wallet/keypair handling. Ensure it resolves to **`trac-wallet@1.0.1`**. If it does not, add an override and reinstall inside the MSB repo (same pattern as above).
 
@@ -725,7 +733,7 @@ This file is the **wallet identity** (keys + mnemonic). If you want multiple app
 
 ## Further References (Repos)
 Use these repos for deeper troubleshooting or protocol understanding:
-- `trac-peer` (commit `d108f52`): https://github.com/Trac-Systems/trac-peer
-- `main_settlement_bus` (commit `5088921`): https://github.com/Trac-Systems/main_settlement_bus
+- `trac-peer` (`v0.4.6`, commit `64b8f401c13ee4e65ee3a29596f6517681e0879e`): https://github.com/Trac-Systems/trac-peer
+- `main_settlement_bus` (`v0.2.19`, commit `3c0ec414dba8722806cf60f1781bd59803ba9f38`): https://github.com/Trac-Systems/main_settlement_bus
 - `trac-crypto-api` (commit `b3c781d`): https://github.com/Trac-Systems/trac-crypto-api
 - `trac-wallet` (npm `1.0.1`): https://www.npmjs.com/package/trac-wallet
